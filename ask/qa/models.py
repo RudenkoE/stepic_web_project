@@ -4,41 +4,32 @@ from django.contrib.auth.models import User
 
 class QuestionManager(models.Manager):
     def new():
-        return self.order_by('-id')
+        pass
     def popular():
-        popular_list = self.all()[:]
-	sort = sorted(popular_list, key=lambda question: question.likes.count(), 			      reverse=True
-		)
-	return self.order_by('-rating')
+        pass
 
 class Question(models.Model):
-	"""docstring for Question"""
-	title = models.CharField(max_length=200)
-	text = models.TextField()
-	added_at = models.DateField(blank=True, auto_now_add=True)
-	rating = models.IntegerField(default=0)
-	author = models.ForeignKey(User, default='x')
-	likes = models.ManyToManyField(User, related_name='likes')
-	objects = QuestionManager()
+    objects = QuestionManager()
 
-	def get_answers(self):
-		return self.answer_set.all()
-		
-	def get_absolute_url(self):
-		return reverse('question', args=[str(self.id)])
+    title = models.CharField(default="", max_length=1024)
+    text = models.TextField(default="")
+    added_at = models.DateField(null=True)
+    rating = models.IntegerField(default=0)
+    author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    likes = models.ManyToManyField(User, related_name="q_to_likes")
 
-		
+    def __str__(self):
+        return self.title
+
+    def get_url(self):
+        return "/question/{}/".format(self.id)
+
+
 class Answer(models.Model):
-	"""docstring for Question"""
-	text = models.TextField()
-	added_at = models.DateField(blank=True, auto_now_add=True)
-	rating = models.IntegerField(default=0)
-	question = models.ForeignKey(Question)
-	author = models.ForeignKey(User)
+    text = models.TextField(default="")
+    added_at = models.DateField(null=True)
+    question = models.ForeignKey(Question, null=True, on_delete=models.SET_NULL)
+    author = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
 
-
-class Session(models.Model):
-	"""docstring for Session"""
-	key = models.CharField(max_length=100, unique=True)
-	user = models.ForeignKey(User)
-	expires = models.DateTimeField(blank=True)
+    def __str__(self):
+        return self.text
