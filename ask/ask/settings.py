@@ -52,14 +52,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'ask.urls'
 
-TEMPLATE_DIRS = (
-    os.path.join('/home/box/web/ask/qa/templates'),
-)
-
-TEMPLATES_DIRS = [
+TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['/home/box/web/ask/qa/templates',],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
