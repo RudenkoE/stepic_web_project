@@ -5,7 +5,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.core.paginator import Paginator, EmptyPage
 from django.core.urlresolvers import reverse
 from qa.models import Question
-from qa.forms import AskForm, AnswerForm, LoginForm, SignUpForm
+from qa.forms import AskForm, AnswerForm, LoginForm, SignupForm
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import login, logout
 
