@@ -1,125 +1,116 @@
-from django.shortcuts import render
-from django.http import HttpResponseRedirect, Http404
-from django.core.paginator import Paginator
-from django.contrib.auth import authenticate, login
-
-from qa.models import Question, Answer
-from qa.forms import AskForm, AnswerForm, LoginForm, SignupForm
-
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+from django.http import HttpResponse, Http404, HttpResponseRedirect
+from django.shortcuts import render, get_object_or_404, redirect
+from django.core.paginator import Paginator, EmptyPage
+from django.core.urlresolvers import reverse
+from qa.models import Question
+from qa.forms import AskForm, AnswerForm, LoginForm, SignUpForm
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import login, logout
 
 # Create your views here.
 
-def question(request, num,):
-    try:
-        q = Question.objects.get(id=num)
-    except Question.DoesNotExist:
-        raise Http404
-    if request.method == "POST":
-        form = AnswerForm(request.POST)
-        if form.is_valid():
-            form._user = request.user
-            _ = form.save()
-            url = q.get_url()
-            return HttpResponseRedirect(url)
-    else:
-        form = AnswerForm(initial={'question': q.id})
+def test(request, *args, **kwargs):
+    return HttpResponse('OK')
 
-    return render(request, 'question.html', {'question': q,
-                                             'form': form,
-                                             'user': request.user,
-                                             'session': request.session, })
+def paginate(request, qs):
+	try:
+		limit = int(request.GET.get('limit', 10))
+	except ValueError:
+		limit = 10
+	if limit > 100:
+		limit = 10
+	try:
+		page = int(request.GET.get('page', 1))
+	except ValueError:
+		raise Http404
+	paginator = Paginator(qs, limit)
+	try:
+		page = paginator.page(page)
+	except EmptyPage:
+		page = paginator.page(paginator.num_pages)
+	return page, paginator
 
-
-def index(request):
-    try:
-        page = int(request.GET.get("page"))
-    except ValueError:
-        page = 1
-    except TypeError:
-        page = 1
-    questions = Question.objects.all().order_by('-id')
-    paginator = Paginator(questions, 10)
-    page = paginator.page(page)
-
-    return render(request, 'list.html',
-                  {'title': 'Latest',
-                   'paginator': paginator,
-                   'questions': page.object_list,
-                   'page': page,
-                   'user': request.user,
-                   'session': request.session, })
-
+def mainpg(request):
+	qs = Question.objects.order_by('-id')
+	page, paginator = paginate(request, qs)
+	paginator.baseurl = reverse('mainpg')
+	return render(request, 'main.html', {
+		'questions': page.object_list,
+		'page': page,
+		'paginator': paginator,
+	})
 
 def popular(request):
-    try:
-        page = int(request.GET.get("page"))
-    except ValueError:
-        page = 1
-    except TypeError:
-        page = 1
-    questions = Question.objects.all().order_by('-rating')
-    paginator = Paginator(questions, 10)
-    page = paginator.page(page)
+	qs = Question.objects.order_by('-rating')
+	page, paginator = paginate(request, qs)
+	paginator.baseurl = reverse('popular') + '?page='
+	return render(request, 'popular.html', {
+		'questions': page.object_list,
+		'page': page,
+		'paginator': paginator,
+	})
 
-    return render(request, 'list.html',
-                  {'title': 'Popular',
-                   'paginator': paginator,
-                   'questions': page.object_list,
-                   'page': page,
-                   'user': request.user,
-                   'session': request.session, })
+@csrf_exempt
+def question(request, pk):
+	question = get_object_or_404(Question, id=pk)
+	answers = question.answer_set.all()
+	form = AnswerForm(initial={'question': str(pk)})
+	return render(request, 'question.html', {
+		'question': question,
+		'answers': answers,
+		'form': form,
+	})
 
+@csrf_exempt
+def question_ask(request):
+	if request.method == 'POST':
+		form = AskForm(request.POST)
+		if form.is_valid():
+			form._user = request.user
+			ask = form.save()
+			url = ask.get_url()
+			return HttpResponseRedirect(url)
+	else:
+		form = AskForm()
+	return render(request, 'ask.html', {
+		'form': form
+	})
 
-def ask(request):
-    if request.method == "POST":
-        form = AskForm(request.POST)
-        if form.is_valid():
-            form._user = request.user
-            post = form.save()
-            url = post.get_url()
-            return HttpResponseRedirect(url)
-    else:
-        form = AskForm()
-    return render(request, 'ask.html', {'form': form,
-                                        'user': request.user,
-                                        'session': request.session, })
+@csrf_exempt
+def question_ans(request):
+	if request.method == 'POST':
+		form = AnswerForm(request.POST)
+		if form.is_valid():
+			form._user = request.user
+			answer = form.save()
+			url = answer.get_url()
+			return HttpResponseRedirect(url)
+	return HttpResponseRedirect('/')
 
+def user_signup(request):
+	if request.method == 'POST':
+		form = SignUpForm(request.POST)
+		if form.is_valid():
+			user = form.save()
+			if user is not None:
+				login(request, user)
+				return HttpResponseRedirect('/')
+	form = SignUpForm()
+	return render(request, 'usignup.html', {'form': form})
 
-def login_view(request):
-    if request.method == "POST":
-        form = LoginForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data["username"]
-            password = form.cleaned_data["password"]
-            print(username, password)
-            user = authenticate(username=username, password=password)
-            print(type(user))
-            if user is not None:
-                if user.is_active:
-                    login(request, user)
-            return HttpResponseRedirect('/')
-    else:
-        form = LoginForm()
-    return render(request, 'login.html', {'form': form,
-                                          'user': request.user,
-                                          'session': request.session, })
+def user_login(request):
+	if request.method == 'POST':
+		form = LoginForm(request.POST)
+		if form.is_valid():
+			user = form.save()
+			if user is not None:
+				login(request, user)
+				return HttpResponseRedirect('/')
+	form = LoginForm()
+	return render(request, 'ulogin.html', {'form': form})
 
-
-def signup(request):
-    if request.method == "POST":
-        form = SignupForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            username = form.cleaned_data["username"]
-            password = form.raw_passeord
-            user = authenticate(username=username, password=password)
-            print(type(user))
-            if user is not None:
-                if user.is_active:
-                    login(request, user)
-            return HttpResponseRedirect('/')
-    else:
-        form = SignupForm()
-    return render(request, 'signup.html', {'form': form,
-                                           'user': request.user,
-                                           'session': request.session, })
+def user_logout(request):
+	logout(request)
+	return redirect('login')
