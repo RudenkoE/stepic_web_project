@@ -7,7 +7,6 @@ urlpatterns = [
 	url(r'^popular/', popular, name='popular'),
 	url(r'^ask/', question_ask, name='question_ask'),
 	url(r'^answer/', question_ans, name='question_ans'),
-	url(r'^new/', test, name='test'),
 	url(r'^login/', user_login, name='login'),
 	url(r'^signup/', user_signup, name='signup'),
 	url(r'^logout/', user_logout, name='logout'),
